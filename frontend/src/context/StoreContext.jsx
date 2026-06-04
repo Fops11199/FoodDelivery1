@@ -40,7 +40,8 @@ const StoreProvider = (props) => {
   });
 
   // Core API URL (Proxy makes relative calls direct to Vite, which proxies to Node)
-  const url = import.meta.env.VITE_API_URL || ""; 
+  const url = import.meta.env.VITE_API_URL || "";
+  console.log("API URL:", url); 
 
   // Luxury Toast Helper
   const showToast = (message, type = "success") => {
