@@ -93,7 +93,10 @@ const placeOrderSchema = Joi.object({
     _id: Joi.string().required(),
     name: Joi.string().required(),
     price: Joi.number().positive().required(),
-    quantity: Joi.number().integer().positive().required()
+    quantity: Joi.number().integer().positive().required(),
+    description: Joi.string().allow('', null),
+    category: Joi.string().allow('', null),
+    image: Joi.string().allow('', null)
   })).min(1).required(),
   amount: Joi.number().positive().required(),
   address: Joi.object({
@@ -104,7 +107,10 @@ const placeOrderSchema = Joi.object({
     city: Joi.string().required(),
     phone: Joi.string().required()
   }).required(),
-  couponCode: Joi.string()
+  couponCode: Joi.string().allow('', null),
+  deliveryZoneId: Joi.string().allow('', null),
+  deliveryTimeSlotId: Joi.string().allow('', null),
+  deliveryDate: Joi.string().allow('', null)
 });
 
 const cancelOrderSchema = Joi.object({
