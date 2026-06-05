@@ -40,7 +40,7 @@ const StoreProvider = (props) => {
   });
 
   // Core API URL (Proxy makes relative calls direct to Vite, which proxies to Node)
-  const url = import.meta.env.VITE_API_URL || ""; 
+  const url = import.meta.env.VITE_API_URL || "https://fooddelivery-82je.onrender.com"; 
 
   // Luxury Toast Helper
   const showToast = (message, type = "success") => {
