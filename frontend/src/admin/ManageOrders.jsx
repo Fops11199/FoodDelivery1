@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { formatDeliveryAddress } from "../utils/apiErrors";
 import { StoreContext } from "../context/StoreContext";
-import { Package, RefreshCw, AlertCircle, ShoppingBag, Truck, CheckCircle2, Clock } from "lucide-react";
+import { Package, RefreshCw, AlertCircle, ShoppingBag, Truck, CheckCircle2, Clock, Inbox } from "lucide-react";
 
 const ManageOrders = () => {
   const { url } = useContext(StoreContext);
@@ -9,6 +9,7 @@ const ManageOrders = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState("");
   const [feedback, setFeedback] = useState({ type: "", text: "" });
+  const [activeTab, setActiveTab] = useState("active"); // "all" | "active" | "pending" | "delivered"
 
   const fetchAllOrders = async () => {
     setLoading(true);
@@ -86,7 +87,7 @@ const ManageOrders = () => {
         return {
           border: "border-green-200 bg-green-50/30",
           icon: <CheckCircle2 size={16} className="text-green-500" />,
-          pill: "bg-green-100 text-green-905 border-green-300"
+          pill: "bg-green-100 text-green-900 border-green-300"
         };
       default:
         return {
@@ -97,11 +98,25 @@ const ManageOrders = () => {
     }
   };
 
+  // Filter orders by tab
+  const filteredOrders = orders.filter(order => {
+    if (activeTab === "active") {
+      return order.status !== "Delivered";
+    }
+    if (activeTab === "pending") {
+      return order.status === "Food Processing";
+    }
+    if (activeTab === "delivered") {
+      return order.status === "Delivered";
+    }
+    return true; // "all"
+  });
+
   return (
     <div className="animate-fade-in">
       
       {/* Header controls */}
-      <div className="flex justify-between items-center mb-8 border-b border-brand-charcoal/5 pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-brand-charcoal/5 pb-4">
         <div className="text-left">
           <h2 className="text-3xl font-bold text-brand-charcoal">Fulfillment Dashboard</h2>
           <p className="text-xs text-brand-charcoal/50 mt-1 font-light">Monitor placed order records, dispatch details, and adjust active preparation/delivery flags.</p>
@@ -117,33 +132,66 @@ const ManageOrders = () => {
         </button>
       </div>
 
+      {/* Tabs / Sub-pages */}
+      <div className="flex gap-2 border-b border-brand-charcoal/10 pb-px mb-6 overflow-x-auto">
+        {[
+          { id: "active", label: "Active Orders", count: orders.filter(o => o.status !== "Delivered").length },
+          { id: "pending", label: "Pending Prep", count: orders.filter(o => o.status === "Food Processing").length },
+          { id: "delivered", label: "Delivered", count: orders.filter(o => o.status === "Delivered").length },
+          { id: "all", label: "All Tickets", count: orders.length }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all shrink-0 flex items-center gap-2 ${
+              activeTab === tab.id
+                ? "border-brand-gold text-brand-charcoal"
+                : "border-transparent text-brand-charcoal/40 hover:text-brand-charcoal"
+            }`}
+          >
+            {tab.label}
+            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+              activeTab === tab.id ? "bg-brand-gold text-brand-charcoal font-black" : "bg-brand-charcoal/10 text-brand-charcoal/65"
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Feedback Alert box */}
       {feedback.text && (
-        <div className={`mb-6 p-4 rounded-xl text-xs font-semibold border flex items-center gap-2 animate-fade-in"success" 
+        <div className={`mb-6 p-4 rounded-xl text-xs font-semibold border flex items-center gap-2 animate-fade-in ${
+          feedback.type === "success" 
             ? "bg-green-50 text-green-800 border-green-200" 
             : "bg-red-50 text-red-800 border-red-200"
         }`}>
-          <AlertCircle size={16} className={feedback.type === "success" ? "text-green-600" : "text-red-650"} />
+          <AlertCircle size={16} className={feedback.type === "success" ? "text-green-600" : "text-red-500"} />
           <span>{feedback.text}</span>
         </div>
       )}
 
-      {loading && orders.length === 0 ? (
+      {loading && filteredOrders.length === 0 ? (
         <div className="text-center py-20 bg-white/40 border border-brand-charcoal/5 rounded-3xl">
           <div className="w-10 h-10 border-4 border-brand-gold border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs font-bold text-brand-charcoal/45 uppercase mt-4">Syncing full orders deck...</p>
+          <p className="text-xs font-bold text-brand-charcoal/45 uppercase mt-4">Syncing orders deck...</p>
         </div>
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <div className="text-center py-20 bg-brand-charcoal/5 rounded-3xl border border-dashed border-brand-charcoal/10 max-w-2xl mx-auto flex flex-col items-center gap-4">
-          <ShoppingBag size={40} className="text-brand-charcoal/20" />
+          <Inbox size={40} className="text-brand-charcoal/20" />
           <div>
-            <h3 className="text-lg font-bold font-serif text-brand-charcoal">No Active Tickets</h3>
-            <p className="text-xs text-brand-charcoal/50 mt-1 max-w-xs font-light">Client order history is empty. Rest assured, placed orders show up here instantly.</p>
+            <h3 className="text-lg font-bold font-serif text-brand-charcoal">No {activeTab} tickets</h3>
+            <p className="text-xs text-brand-charcoal/50 mt-1 max-w-xs font-light">
+              {activeTab === "active" && "There are no current orders being prepared or shipped."}
+              {activeTab === "pending" && "All orders have advanced past the cooking preparation stage."}
+              {activeTab === "delivered" && "No orders have been marked as delivered yet."}
+              {activeTab === "all" && "Client order history is completely empty."}
+            </p>
           </div>
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const visualConfig = getStatusVisuals(order.status);
             const isUpdating = updatingId === order._id;
 

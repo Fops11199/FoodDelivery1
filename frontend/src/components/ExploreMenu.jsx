@@ -1,14 +1,11 @@
 import React from "react";
-import { Soup, Croissant, Cake, Sandwich, Salad, UtensilsCrossed, Globe, LayoutGrid } from "lucide-react";
+import { Soup, Flame, GlassWater, Cake, LayoutGrid } from "lucide-react";
 
 const menu_list = [
-  { menu_name: "Signature Bowls", icon: Soup },
-  { menu_name: "Wood-Fired Rolls", icon: Croissant },
-  { menu_name: "Artisan Desserts", icon: Cake },
-  { menu_name: "Gourmet Sandwiches", icon: Sandwich },
-  { menu_name: "Curated Salads", icon: Salad },
-  { menu_name: "Special Pasta", icon: UtensilsCrossed },
-  { menu_name: "African Curations", icon: Globe },
+  { menu_name: "Plats Traditionnels", icon: Soup },
+  { menu_name: "Poissons & Grillades", icon: Flame },
+  { menu_name: "Boissons", icon: GlassWater },
+  { menu_name: "Desserts", icon: Cake },
 ];
 
 const ExploreMenu = ({ category, setCategory }) => {
