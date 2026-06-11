@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Ticket, Plus, Edit2, Trash2, RefreshCw, AlertCircle, Percent, DollarSign } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const CouponManagement = () => {
   const { showAlert, showConfirm } = useContext(StoreContext);
@@ -26,7 +27,7 @@ const CouponManagement = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/coupon/all", {
+      const response = await fetch(`${API_URL}/api/coupon/all`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -51,7 +52,7 @@ const CouponManagement = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const url = editingCoupon ? "/api/coupon/update" : "/api/coupon/create";
+      const url = editingCoupon ? `${API_URL}/api/coupon/update` : `${API_URL}/api/coupon/create`;
       const method = editingCoupon ? "POST" : "POST";
 
       const response = await fetch(url, {
@@ -103,7 +104,7 @@ const CouponManagement = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/coupon/delete", {
+      const response = await fetch(`${API_URL}/api/coupon/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

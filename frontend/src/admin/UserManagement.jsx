@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Users, Ban, Trash2, Search, Shield, RefreshCw, AlertCircle } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const UserManagement = () => {
   const { showAlert, showConfirm } = useContext(StoreContext);
@@ -16,7 +17,7 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/user/all", {
+      const response = await fetch(`${API_URL}/api/user/all`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -40,7 +41,7 @@ const UserManagement = () => {
   const handleBanUser = async (userId, currentStatus) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/user/ban", {
+      const response = await fetch(`${API_URL}/api/user/ban`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,7 +67,7 @@ const UserManagement = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/user/delete", {
+      const response = await fetch(`${API_URL}/api/user/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

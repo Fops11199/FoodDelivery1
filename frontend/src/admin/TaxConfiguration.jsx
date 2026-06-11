@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Percent, RefreshCw, AlertCircle, Save } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const TaxConfiguration = () => {
   const { showAlert } = useContext(StoreContext);
@@ -21,7 +22,7 @@ const TaxConfiguration = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/tax/config", {
+      const response = await fetch(`${API_URL}/api/tax/config`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -64,7 +65,7 @@ const TaxConfiguration = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/tax/update", {
+      const response = await fetch(`${API_URL}/api/tax/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

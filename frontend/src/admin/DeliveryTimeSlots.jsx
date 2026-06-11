@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Clock, Plus, Edit2, Trash2, RefreshCw, AlertCircle, ToggleLeft, ToggleRight } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const DeliveryTimeSlots = () => {
   const { showAlert, showConfirm } = useContext(StoreContext);
@@ -24,7 +25,7 @@ const DeliveryTimeSlots = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/delivery-time/slots", {
+      const response = await fetch(`${API_URL}/api/delivery-time/slots`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -49,7 +50,7 @@ const DeliveryTimeSlots = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const url = editingSlot ? "/api/delivery-time/update" : "/api/delivery-time/create";
+      const url = editingSlot ? `${API_URL}/api/delivery-time/update` : `${API_URL}/api/delivery-time/create`;
       const method = "POST";
 
       const response = await fetch(url, {
@@ -86,7 +87,7 @@ const DeliveryTimeSlots = () => {
   const handleToggle = async (slotId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/delivery-time/update", {
+      const response = await fetch(`${API_URL}/api/delivery-time/update`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -123,7 +124,7 @@ const DeliveryTimeSlots = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/delivery-time/delete", {
+      const response = await fetch(`${API_URL}/api/delivery-time/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

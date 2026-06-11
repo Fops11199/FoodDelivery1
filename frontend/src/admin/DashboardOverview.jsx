@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { API_URL } from "../utils/api";
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -24,7 +25,7 @@ const DashboardOverview = () => {
     else setRefreshing(true);
     
     try {
-      const response = await fetch("/api/order/dashboard");
+      const response = await fetch(`${API_URL}/api/order/dashboard`);
       const data = await response.json();
       if (data.success) {
         setStats(data.data);

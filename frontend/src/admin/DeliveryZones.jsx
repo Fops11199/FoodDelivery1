@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { MapPin, Plus, Edit2, Trash2, RefreshCw, AlertCircle, Calculator } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const DeliveryZones = () => {
   const { showAlert, showConfirm } = useContext(StoreContext);
@@ -25,7 +26,7 @@ const DeliveryZones = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/delivery/zones", {
+      const response = await fetch(`${API_URL}/api/delivery/zones`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -50,7 +51,7 @@ const DeliveryZones = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      const url = editingZone ? "/api/delivery/update" : "/api/delivery/create";
+      const url = editingZone ? `${API_URL}/api/delivery/update` : `${API_URL}/api/delivery/create`;
       const method = "POST";
 
       const response = await fetch(url, {
@@ -106,7 +107,7 @@ const DeliveryZones = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/delivery/delete", {
+      const response = await fetch(`${API_URL}/api/delivery/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

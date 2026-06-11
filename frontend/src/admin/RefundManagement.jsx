@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { RefreshCw, AlertCircle, CheckCircle, XCircle, DollarSign } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const RefundManagement = () => {
   const { showAlert } = useContext(StoreContext);
@@ -15,7 +16,7 @@ const RefundManagement = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/refund/all", {
+      const response = await fetch(`${API_URL}/api/refund/all`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -39,7 +40,7 @@ const RefundManagement = () => {
   const handleProcessRefund = async (refundId, action) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/refund/process", {
+      const response = await fetch(`${API_URL}/api/refund/process`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

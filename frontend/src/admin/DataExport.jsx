@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { Download, FileText, Users, ShoppingBag, Ticket, RefreshCw, AlertCircle } from "lucide-react";
 import { StoreContext } from "../context/StoreContext";
+import { API_URL } from "../utils/api";
 
 const DataExport = () => {
   const { showAlert } = useContext(StoreContext);
@@ -10,7 +11,7 @@ const DataExport = () => {
     setExporting(type);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`/api/export/${type}`, {
+      const response = await fetch(`${API_URL}/api/export/${type}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
