@@ -353,7 +353,8 @@ const FoodDetailsModal = ({ item, onClose }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

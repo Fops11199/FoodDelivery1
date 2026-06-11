@@ -1,10 +1,12 @@
 import React, { useContext, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { StoreContext } from "../context/StoreContext";
 import { ShoppingCart } from "lucide-react";
 
 const FloatingCartButton = () => {
   const { cartItems } = useContext(StoreContext);
   const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
 
   const totalItems = Object.values(cartItems).reduce((sum, qty) => sum + qty, 0);
 
@@ -13,7 +15,7 @@ const FloatingCartButton = () => {
     if (cartSection) {
       cartSection.scrollIntoView({ behavior: "smooth" });
     } else {
-      window.location.href = "/cart";
+      navigate("/cart");
     }
   };
 

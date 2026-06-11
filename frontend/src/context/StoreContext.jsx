@@ -150,10 +150,16 @@ const StoreProvider = (props) => {
 
   // Add Item to Cart (Optimistic State Update & Server Sync)
   const addToCart = async (itemId) => {
-    setCartItems((prev) => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1,
-    }));
+    setCartItems((prev) => {
+      const updated = {
+        ...prev,
+        [itemId]: (prev[itemId] || 0) + 1,
+      };
+      if (!token) {
+        localStorage.setItem("cartItems", JSON.stringify(updated));
+      }
+      return updated;
+    });
 
     const itemInfo = food_list.find((p) => p._id === itemId);
     const name = itemInfo ? itemInfo.name : "Artisan Selection";
@@ -187,6 +193,9 @@ const StoreProvider = (props) => {
         delete updated[itemId];
       } else {
         updated[itemId] -= 1;
+      }
+      if (!token) {
+        localStorage.setItem("cartItems", JSON.stringify(updated));
       }
       return updated;
     });
@@ -294,6 +303,15 @@ const StoreProvider = (props) => {
         }
       }
       await fetchCartData(localToken);
+    } else {
+      try {
+        const guestCart = localStorage.getItem("cartItems");
+        if (guestCart) {
+          setCartItems(JSON.parse(guestCart));
+        }
+      } catch (error) {
+        console.error("Error loading guest cart:", error);
+      }
     }
     setLoading(false);
   };
@@ -306,6 +324,7 @@ const StoreProvider = (props) => {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("cartItems");
     setToken("");
     setUser(null);
     setCartItems({});

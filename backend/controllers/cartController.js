@@ -1,4 +1,5 @@
-const { readDB, writeDB } = require('../config/db');
+const User = require('../models/User');
+const Food = require('../models/Food');
 
 // Add Item to Cart
 const addToCart = async (req, res) => {
@@ -8,10 +9,8 @@ const addToCart = async (req, res) => {
       return res.json({ success: false, message: "Missing user ID or item ID" });
     }
 
-    const db = readDB();
-
     // Check if food exists and has stock
-    const food = db.foods.find(f => f._id === itemId);
+    const food = await Food.findById(itemId);
     if (!food) {
       return res.json({ success: false, message: "Food item not found" });
     }
@@ -21,17 +20,17 @@ const addToCart = async (req, res) => {
       return res.json({ success: false, message: "This item is currently out of stock" });
     }
 
-    const userIndex = db.users.findIndex(u => u._id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
 
     // Initialize cartData if it doesn't exist
-    if (!db.users[userIndex].cartData) {
-      db.users[userIndex].cartData = {};
+    if (!user.cartData) {
+      user.cartData = new Map();
     }
 
-    const currentQty = db.users[userIndex].cartData[itemId] || 0;
+    const currentQty = user.cartData.get(itemId) || 0;
 
     // Check if adding would exceed available stock
     if (food.stock !== undefined && currentQty >= food.stock) {
@@ -39,8 +38,11 @@ const addToCart = async (req, res) => {
     }
 
     // Increment quantity
-    db.users[userIndex].cartData[itemId] = currentQty + 1;
-    writeDB(db);
+    user.cartData.set(itemId, currentQty + 1);
+    
+    // Mark modified so mongoose saves the map correctly
+    user.markModified('cartData');
+    await user.save();
 
     res.json({ success: true, message: "Item added to cart" });
   } catch (error) {
@@ -57,27 +59,26 @@ const removeFromCart = async (req, res) => {
       return res.json({ success: false, message: "Missing item ID" });
     }
 
-    const db = readDB();
-    const userIndex = db.users.findIndex(u => u._id === userId);
-
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
 
-    let cartData = db.users[userIndex].cartData || {};
-
-    if (cartData[itemId]) {
-      if (cartData[itemId] <= 1) {
-        delete cartData[itemId];
-      } else {
-        cartData[itemId] -= 1;
+    if (user.cartData) {
+      const currentQty = user.cartData.get(itemId) || 0;
+      if (currentQty > 0) {
+        if (currentQty <= 1) {
+          user.cartData.delete(itemId);
+        } else {
+          user.cartData.set(itemId, currentQty - 1);
+        }
+        user.markModified('cartData');
+        await user.save();
       }
     }
 
-    db.users[userIndex].cartData = cartData;
-    writeDB(db);
-
-    res.json({ success: true, message: "Removed from cart successfully", cartData });
+    const cartObj = user.cartData ? Object.fromEntries(user.cartData) : {};
+    res.json({ success: true, message: "Removed from cart successfully", cartData: cartObj });
   } catch (error) {
     console.error("Remove from Cart Error:", error);
     res.json({ success: false, message: "Failed to update cart" });
@@ -88,14 +89,14 @@ const removeFromCart = async (req, res) => {
 const getCart = async (req, res) => {
   try {
     const { userId } = req.body;
-    const db = readDB();
-    const user = db.users.find(u => u._id === userId);
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
 
-    res.json({ success: true, cartData: user.cartData || {} });
+    const cartObj = user.cartData ? Object.fromEntries(user.cartData) : {};
+    res.json({ success: true, cartData: cartObj });
   } catch (error) {
     console.error("Get Cart Error:", error);
     res.json({ success: false, message: "Failed to load cart state" });

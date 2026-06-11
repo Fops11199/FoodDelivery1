@@ -1,3 +1,5 @@
+const User = require('../models/User');
+const Food = require('../models/Food');
 const { readDB, writeDB } = require('../config/db');
 
 // Add Review
@@ -13,19 +15,19 @@ const addReview = async (req, res) => {
       return res.json({ success: false, message: "Rating must be between 1 and 5" });
     }
 
-    const db = readDB();
-
-    // Check if food exists
-    const foodIndex = db.foods.findIndex(f => f._id === foodId);
-    if (foodIndex === -1) {
+    // Check if food exists in MongoDB
+    const food = await Food.findById(foodId);
+    if (!food) {
       return res.json({ success: false, message: "Food item not found" });
     }
 
-    // Check if user exists
-    const userIndex = db.users.findIndex(u => u._id === userId);
-    if (userIndex === -1) {
+    // Check if user exists in MongoDB
+    const user = await User.findById(userId);
+    if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
+
+    const db = readDB();
 
     // Initialize reviews array if it doesn't exist
     if (!db.reviews) {
@@ -51,7 +53,7 @@ const addReview = async (req, res) => {
         _id: `review_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         foodId,
         userId,
-        userName: db.users[userIndex].name,
+        userName: user.name,
         rating,
         comment: comment || "",
         createdAt: new Date().toISOString(),

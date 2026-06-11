@@ -1,3 +1,6 @@
+const Order = require('../models/Order');
+const User = require('../models/User');
+const Food = require('../models/Food');
 const { readDB, writeDB } = require('../config/db');
 const { sendOrderConfirmation } = require('../utils/emailService');
 
@@ -10,17 +13,14 @@ const placeOrder = async (req, res) => {
       return res.json({ success: false, message: "Please complete your delivery details and try again." });
     }
 
-    const db = readDB();
-
-    // Check if user exists
-    const userIndex = db.users.findIndex(u => u._id === userId);
-    if (userIndex === -1) {
+    const user = await User.findById(userId);
+    if (!user) {
       return res.json({ success: false, message: "Your account was not found. Please sign in again." });
     }
 
     // Validate stock availability for all items
     for (const item of items) {
-      const food = db.foods.find(f => f._id === item._id);
+      const food = await Food.findById(item._id);
       if (!food) {
         return res.json({ success: false, message: `Food item ${item.name} not found` });
       }
@@ -31,6 +31,8 @@ const placeOrder = async (req, res) => {
         });
       }
     }
+
+    const db = readDB();
 
     // Calculate delivery fee if zone is provided
     let deliveryFee = 3000; // Default delivery fee (3000 FCFA)
@@ -122,10 +124,11 @@ const placeOrder = async (req, res) => {
         discountAmount: discountAmount
       };
 
-      // Increment coupon usage
+      // Increment coupon usage in db.json configuration file
       const couponIndex = db.coupons.findIndex(c => c._id === coupon._id);
       if (couponIndex !== -1) {
         db.coupons[couponIndex].usageCount = (db.coupons[couponIndex].usageCount || 0) + 1;
+        writeDB(db);
       }
     }
 
@@ -154,8 +157,8 @@ const placeOrder = async (req, res) => {
     // Generate order ID
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Create order object
-    const newOrder = {
+    // Create order object in MongoDB
+    await Order.create({
       _id: orderId,
       userId,
       items,
@@ -172,37 +175,25 @@ const placeOrder = async (req, res) => {
       taxName,
       address,
       status: "Food Processing",
-      date: new Date().toISOString(),
+      date: new Date(),
       payment: false,
       paymentMethod: "Mobile Money Transfer",
       paymentStatus: "Pending Verification",
       adminNote: "Customer confirmed transfer. Please verify payment to 237673184599 (AMOH JOEL)"
-    };
+    });
 
-    // Initialize orders array if it doesn't exist
-    if (!db.orders) {
-      db.orders = [];
-    }
-
-    // Add order to database
-    db.orders.push(newOrder);
-
-    // Deduct stock for each ordered item
+    // Deduct stock for each ordered item in MongoDB
     for (const item of items) {
-      const foodIndex = db.foods.findIndex(f => f._id === item._id);
-      if (foodIndex !== -1 && db.foods[foodIndex].stock !== undefined) {
-        db.foods[foodIndex].stock -= item.quantity;
-      }
+      await Food.findByIdAndUpdate(item._id, { $inc: { stock: -item.quantity } });
     }
 
-    // Clear user's cart
-    db.users[userIndex].cartData = {};
-
-    writeDB(db);
+    // Clear user's cart in MongoDB
+    user.cartData = new Map();
+    user.markModified('cartData');
+    await user.save();
 
     // Send order confirmation email
-    const userEmail = db.users[userIndex].email;
-    sendOrderConfirmation(userEmail, {
+    sendOrderConfirmation(user.email, {
       orderId,
       amount: finalAmountWithTax,
       address,
@@ -240,25 +231,22 @@ const verifyOrder = async (req, res) => {
       return res.json({ success: false, message: "Missing Order ID for verification" });
     }
 
-    const db = readDB();
-    const orderIndex = db.orders.findIndex(o => o._id === orderId);
-
-    if (orderIndex === -1) {
+    const order = await Order.findById(orderId);
+    if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
 
     if (success === "true" || success === true) {
       // For manual payment, mark as pending verification by admin
-      db.orders[orderIndex].payment = true;
-      db.orders[orderIndex].paymentMethod = "Mobile Money Transfer";
-      db.orders[orderIndex].paymentStatus = "Pending Verification";
-      db.orders[orderIndex].adminNote = "Customer confirmed transfer. Please verify payment to 237673184599 (AMOH JOEL)";
-      writeDB(db);
+      order.payment = true;
+      order.paymentMethod = "Mobile Money Transfer";
+      order.paymentStatus = "Pending Verification";
+      order.adminNote = "Customer confirmed transfer. Please verify payment to 237673184599 (AMOH JOEL)";
+      await order.save();
       res.json({ success: true, message: "Order placed successfully. Payment verification pending." });
     } else {
       // If payment failed/cancelled, delete the order
-      db.orders.splice(orderIndex, 1);
-      writeDB(db);
+      await Order.findByIdAndDelete(orderId);
       res.json({ success: false, message: "Order cancelled" });
     }
 
@@ -277,34 +265,28 @@ const cancelOrder = async (req, res) => {
       return res.json({ success: false, message: "Missing order ID or user ID" });
     }
 
-    const db = readDB();
-    const orderIndex = db.orders.findIndex(o => o._id === orderId);
-
-    if (orderIndex === -1) {
+    const order = await Order.findById(orderId);
+    if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
 
     // Check if order belongs to user
-    if (db.orders[orderIndex].userId !== userId) {
+    if (order.userId !== userId) {
       return res.json({ success: false, message: "Unauthorized to cancel this order" });
     }
 
     // Check if order can be cancelled (only if status is "Food Processing")
-    if (db.orders[orderIndex].status !== "Food Processing") {
+    if (order.status !== "Food Processing") {
       return res.json({ success: false, message: "Order cannot be cancelled at this stage" });
     }
 
-    // Restore stock for cancelled order
-    for (const item of db.orders[orderIndex].items) {
-      const foodIndex = db.foods.findIndex(f => f._id === item._id);
-      if (foodIndex !== -1 && db.foods[foodIndex].stock !== undefined) {
-        db.foods[foodIndex].stock += item.quantity;
-      }
+    // Restore stock for cancelled order in MongoDB
+    for (const item of order.items) {
+      await Food.findByIdAndUpdate(item._id, { $inc: { stock: item.quantity } });
     }
 
     // Delete the order
-    db.orders.splice(orderIndex, 1);
-    writeDB(db);
+    await Order.findByIdAndDelete(orderId);
 
     res.json({ success: true, message: "Order cancelled successfully" });
   } catch (error) {
@@ -327,16 +309,14 @@ const updateOrderStatus = async (req, res) => {
       return res.json({ success: false, message: "Invalid status" });
     }
 
-    const db = readDB();
-    const orderIndex = db.orders.findIndex(o => o._id === orderId);
-
-    if (orderIndex === -1) {
+    const order = await Order.findById(orderId);
+    if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
 
     // Update order status
-    db.orders[orderIndex].status = status;
-    writeDB(db);
+    order.status = status;
+    await order.save();
 
     res.json({ success: true, message: "Order status updated successfully" });
   } catch (error) {
@@ -349,13 +329,7 @@ const updateOrderStatus = async (req, res) => {
 const userOrders = async (req, res) => {
   try {
     const { userId } = req.body;
-    const db = readDB();
-    
-    // Get user orders and sort by date descending
-    const orders = db.orders
-      .filter(o => o.userId === userId)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-
+    const orders = await Order.find({ userId }).sort({ date: -1 });
     res.json({ success: true, data: orders });
   } catch (error) {
     console.error("User Orders Error:", error);
@@ -366,9 +340,8 @@ const userOrders = async (req, res) => {
 // Fetch All Orders (Admin Dashboard)
 const listOrders = async (req, res) => {
   try {
-    const db = readDB();
-    const sortedOrders = db.orders.sort((a, b) => new Date(b.date) - new Date(a.date));
-    res.json({ success: true, data: sortedOrders });
+    const orders = await Order.find({}).sort({ date: -1 });
+    res.json({ success: true, data: orders });
   } catch (error) {
     console.error("List Orders Error:", error);
     res.json({ success: false, message: "Failed to load admin orders" });
@@ -383,15 +356,13 @@ const updateStatus = async (req, res) => {
       return res.json({ success: false, message: "Missing Order ID or Status" });
     }
 
-    const db = readDB();
-    const orderIndex = db.orders.findIndex(o => o._id === orderId);
-
-    if (orderIndex === -1) {
+    const order = await Order.findById(orderId);
+    if (!order) {
       return res.json({ success: false, message: "Order not found" });
     }
 
-    db.orders[orderIndex].status = status;
-    writeDB(db);
+    order.status = status;
+    await order.save();
 
     res.json({ success: true, message: "Fulfillment status updated successfully" });
   } catch (error) {
@@ -403,16 +374,13 @@ const updateStatus = async (req, res) => {
 // Fetch Real-time Dashboard Analytics Stats
 const getDashboardStats = async (req, res) => {
   try {
-    const db = readDB();
+    const usersCount = await User.countDocuments({});
+    const catalogCount = await Food.countDocuments({});
     
-    const usersCount = db.users ? db.users.length : 0;
-    const catalogCount = db.foods ? db.foods.length : 0;
-    
-    // Calculate total revenue from paid orders and count active orders
     let totalRevenue = 0;
     let activeOrdersCount = 0;
     
-    const paidOrders = (db.orders || []).filter(o => o.payment === true);
+    const paidOrders = await Order.find({ payment: true });
     
     paidOrders.forEach(o => {
       totalRevenue += Number(o.amount) || 0;
@@ -421,11 +389,11 @@ const getDashboardStats = async (req, res) => {
       }
     });
 
-    // Sales by Category (Real Database Count)
+    // Sales by Category
     const categorySalesMap = {};
+    const foods = await Food.find({});
     
-    // Initialize standard categories in categorySalesMap to ensure 0-sales categories still appear
-    const activeCategories = [...new Set((db.foods || []).map(f => f.category))];
+    const activeCategories = [...new Set(foods.map(f => f.category))];
     activeCategories.forEach(cat => {
       categorySalesMap[cat] = 0;
     });
@@ -435,7 +403,7 @@ const getDashboardStats = async (req, res) => {
         o.items.forEach(item => {
           let category = item.category;
           if (!category) {
-            const resolvedFood = db.foods.find(f => f._id === item._id);
+            const resolvedFood = foods.find(f => f._id === item._id);
             category = resolvedFood ? resolvedFood.category : "Signature Bowls";
           }
           if (category) {
@@ -477,8 +445,11 @@ const getDashboardStats = async (req, res) => {
     const activities = [];
     
     // 1. Log actual orders placed in the system
-    (db.orders || []).forEach(o => {
-      const orderUser = db.users.find(u => u._id === o.userId);
+    const allOrders = await Order.find({});
+    const allUsers = await User.find({});
+    
+    allOrders.forEach(o => {
+      const orderUser = allUsers.find(u => u._id === o.userId);
       const userName = orderUser ? orderUser.name : (o.address?.firstName ? `${o.address.firstName} ${o.address.lastName}` : "Guest");
       const cleanTime = new Date(o.date);
       
@@ -488,7 +459,7 @@ const getDashboardStats = async (req, res) => {
       
       activities.push({
         type: "order",
-        message: `Order #${o._id.substring(o._id.length - 6).toUpperCase()} placed by ${userName} ($${Number(o.amount).toFixed(2)})`,
+        message: `Order #${o._id.substring(o._id.length - 6).toUpperCase()} placed by ${userName} (FCFA ${Number(o.amount).toLocaleString()})`,
         detail: `Status: ${statusLabel}`,
         timestamp: cleanTime.getTime(),
         timeLabel: cleanTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -496,16 +467,9 @@ const getDashboardStats = async (req, res) => {
       });
     });
 
-    // 2. Log actual registered users (with dates extracted from their ID or simulated offset)
-    (db.users || []).forEach(u => {
-      let regTime = Date.now() - 24 * 60 * 60 * 1000 * 3; // fallback 3 days ago
-      const numericId = parseInt(u._id);
-      if (!isNaN(numericId) && numericId > 1000000000000) {
-        regTime = numericId;
-      } else if (u._id === "admin_user_01") {
-        regTime = Date.now() - 24 * 60 * 60 * 1000 * 7; // admin default 7 days ago
-      }
-      const cleanTime = new Date(regTime);
+    // 2. Log actual registered users
+    allUsers.forEach(u => {
+      const cleanTime = new Date(u.createdAt || Date.now());
       activities.push({
         type: "user",
         message: `New Gastronomer profile registered: ${u.email}`,
@@ -517,14 +481,12 @@ const getDashboardStats = async (req, res) => {
     });
 
     // 3. Log actual dishes in the catalog
-    (db.foods || []).forEach((f, idx) => {
-      // Offset catalog addition timestamps to spread them nicely on the feed timeline
-      let addTime = Date.now() - 24 * 60 * 60 * 1000 * (idx % 5);
-      const cleanTime = new Date(addTime);
+    foods.forEach((f, idx) => {
+      const cleanTime = new Date(f.createdAt || Date.now());
       activities.push({
         type: "catalog",
         message: `Signature dish added: "${f.name}"`,
-        detail: `Category: ${f.category} • Price: $${Number(f.price).toFixed(2)}`,
+        detail: `Category: ${f.category} • Price: FCFA ${Number(f.price).toLocaleString()}`,
         timestamp: cleanTime.getTime(),
         timeLabel: cleanTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         dateLabel: cleanTime.toLocaleDateString([], { month: 'short', day: 'numeric' })
