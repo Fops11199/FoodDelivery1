@@ -24,12 +24,19 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   process.env.FRONTEND_URL,          // e.g. https://yourapp.vercel.app
-].filter(Boolean);
+].filter(Boolean).map(url => url.trim().replace(/\/$/, ''));
 
 app.use(cors({
   origin: (origin, callback) => {
     // allow requests with no origin (curl, Postman, server-to-server)
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    
+    const sanitizedOrigin = origin.trim().replace(/\/$/, '');
+    if (allowedOrigins.includes(sanitizedOrigin)) {
+      return callback(null, true);
+    }
+    
+    console.warn(`CORS block triggered. Origin: "${origin}". Allowed Origins:`, allowedOrigins);
     callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true
