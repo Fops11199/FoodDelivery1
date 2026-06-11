@@ -13,6 +13,11 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Trust the first proxy hop (Render's load balancer / reverse proxy).
+// Required for express-rate-limit to correctly read X-Forwarded-For headers
+// and avoid ERR_ERL_UNEXPECTED_X_FORWARDED_FOR in production.
+app.set('trust proxy', 1);
+
 // Security Headers
 app.use(helmet());
 
