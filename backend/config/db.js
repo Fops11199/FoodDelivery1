@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 const User = require('../models/User');
 const Food = require('../models/Food');
@@ -157,17 +158,31 @@ async function initializeDB() {
     });
     console.log("Connected to MongoDB Atlas successfully.");
 
-    // Seed Users
+    // Seed Admin User from environment variables
     const userCount = await User.countDocuments();
     if (userCount === 0) {
-      await User.create({
-        name: "AMOH JOEL",
-        email: "joelamoh65@gmail.com",
-        password: "$2a$10$tiY2X0XwVT4ANsQF4axUAuEFAQrczXKmNEfUQymnmHPDlcYzyL7c.", // "admin123"
-        cartData: {},
-        isAdmin: true
-      });
-      console.log("Seeded default admin user.");
+      const adminName     = process.env.ADMIN_NAME;
+      const adminEmail    = process.env.ADMIN_EMAIL;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+
+      if (!adminName || !adminEmail || !adminPassword) {
+        console.warn(
+          "[SEED] ADMIN_NAME, ADMIN_EMAIL or ADMIN_PASSWORD env vars are not set. " +
+          "Skipping admin user seed. Set them in your environment and restart."
+        );
+      } else {
+        const salt           = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminPassword, salt);
+
+        await User.create({
+          name: adminName,
+          email: adminEmail.toLowerCase(),
+          password: hashedPassword,
+          cartData: {},
+          isAdmin: true
+        });
+        console.log(`[SEED] Admin user seeded: ${adminEmail}`);
+      }
     }
 
     // Seed Food Items

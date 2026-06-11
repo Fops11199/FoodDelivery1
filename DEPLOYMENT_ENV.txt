@@ -23,6 +23,9 @@ SMTP_PASS=your_16_char_gmail_app_password
 SMTP_FROM="Joel's Kitchen <joelamoh65@gmail.com>"
 OWNER_EMAIL=joelamoh65@gmail.com
 FRONTEND_URL=https://your-vercel-frontend-url.vercel.app
+ADMIN_NAME=AMOH JOEL
+ADMIN_EMAIL=joelamoh65@gmail.com
+ADMIN_PASSWORD=replace_with_strong_password
 
 
 # ==============================================================================
